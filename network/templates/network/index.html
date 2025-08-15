@@ -1,5 +1,24 @@
 {% extends "network/layout.html" %}
+{% load static %}
 
 {% block body %}
-    TODO
+    <div id="create-post">
+        <form id="post-form">
+            <textarea type="text" class="form-control" id="new-post" name="new-post" placeholder="What's Happening?" required></textarea>
+            <input type="submit" id="post-submit" class="btn btn-primary">
+        </form>
+    </div>
+
+    <div id="all-posts-view">
+    </div>
+
+    <div id="following-posts-view">
+    </div>
+
+    <div id="profile-view">
+    </div>
+{% endblock %}
+
+{% block script %}
+    <script src="{% static 'network/index.js' %}"></script>
 {% endblock %}
