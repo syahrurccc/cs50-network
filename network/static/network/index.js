@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelector('#all-posts').addEventListener('click', () => loadPosts('all'));
     document.querySelector('#following-posts').addEventListener('click', () => loadPosts('following'));
-    // document.querySelector('#post-form').addEventListener('submit', newPost);
+    document.querySelector('#post-form').addEventListener('submit', newPost);
     document.querySelector('body').addEventListener('click', (event) => {
         const profile = event.target.closest('.profile')
         if (profile) {
@@ -18,6 +18,9 @@ async function loadPosts(type) {
     const currentUser = document.body.dataset.user;
     const isLoggedIn = currentUser !== 'AnonymousUser';
     const isAllView = type === 'all'
+
+    document.querySelector(type === 'all' ? '#all-posts-view' : '#following-posts-view').innerHTML = '';
+    document.querySelector('#new-post').value = '';
 
     document.querySelector('#profile-view').style.display = 'none';
     document.querySelector('#create-post').style.display = isLoggedIn ? 'block' : 'none';
@@ -76,4 +79,21 @@ async function loadPosts(type) {
     } catch(error) {
         console.error(error)
     }
+}
+
+function newPost(event) {
+    
+    event.preventDefault();
+
+    const content = document.querySelector('#new-post').value;
+
+    fetch('/posts/create', {
+        method: 'POST',
+        body: JSON.stringify({content})
+    })
+    .then(response => response.json())
+    .then(result => {
+        console.log(result)
+        loadPosts('all')
+    })
 }
