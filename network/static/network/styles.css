@@ -11,18 +11,20 @@
     margin-top: 0.5em;
 }
 
-.post {
+.post-container {
   margin-bottom: 15px;
   padding: 15px;
   background: white;
   border: 1px solid #ddd;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
 }
 
-.post:hover {
+.post-container:hover {
   border: 1px solid #c5c5c5;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  transform: scale(1.02);
 }
 
 .details {
@@ -51,13 +53,38 @@
   color: #999;
 }
 
-.post p {
+.post-container p {
   font-size: 15px;
   margin: 10px 0;
 }
 
-.actions, .post > div:last-child {
+.actions, .post-container > div:last-child {
   margin-top: 8px;
   font-size: 14px;
-  color: #007bff;
 }
+
+.unliked {
+  color: black;
+  cursor: pointer;
+}
+
+.liked {
+  color: #007bff;
+  cursor: pointer;
+}
+
+#following-posts,
+#all-posts,
+.author,
+.actions, .post-container > div:last-child {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+#following-posts:hover,
+#all-posts:hover,
+.actions:hover {
+  transform: scale(1.05);
+}
+
+

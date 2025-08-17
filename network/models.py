@@ -11,6 +11,7 @@ class User(AbstractUser):
         return {
             "id": self.id,
             "username": self.username,
+            "profile_pic": self.profile_pic,
             "followers_count": self.followers.count(),
             "followings_count": self.followings.count()
         }

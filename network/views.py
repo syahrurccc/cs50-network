@@ -14,6 +14,7 @@ def index(request):
 
     return render(request, "network/index.html")
 
+
 @csrf_exempt
 @login_required
 def create_posts(request):
@@ -43,11 +44,12 @@ def show_posts(request, type):
     else:
         return JsonResponse({"error": "Invalid route"}, status=400)
     
-    liked_ids = set()
-    if request.user.is_authenticated:
-        liked_ids = set(request.user.likes.values_list("id", flat=True))
+    liked_ids = set(request.user.likes.values_list("id", flat=True)) if request.user.is_authenticated else set()
 
-    return JsonResponse({"posts": [post.serialize() for post in posts], "liked_ids": list(liked_ids)})
+    return JsonResponse({
+        "posts": [post.serialize() for post in posts], 
+        "liked_ids": list(liked_ids)
+    })
 
 
 def profile(request, username):
@@ -58,11 +60,19 @@ def profile(request, username):
         return JsonResponse({"error": "User does not exist"}, status=404)
     
     posts = Post.objects.filter(author=profile)
+    liked_ids = set(request.user.likes.values_list("id", flat=True)) if request.user.is_authenticated else set()
+
+    # Check if the current user is following the viewed user
+    is_following = False
+    if request.user.is_authenticated:
+        is_following = request.user.followings.filter(id=profile.id).exists()
 
     if request.method == "GET":
         return JsonResponse({
             "profile": profile.serialize(),
-            "posts": [post.serialize() for post in posts]
+            "posts": [post.serialize() for post in posts],
+            "isFollowing": is_following,
+            "liked_ids": list(liked_ids)
         })
 
     elif request.method == "PUT":
