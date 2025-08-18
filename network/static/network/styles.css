@@ -2,7 +2,7 @@
 #following-posts-view,
 #profile-view,
 #create-post {
-  max-width: 600px;   
+  max-width: 800px;   
   margin: 20px auto;    
   padding: 15px;
 }
@@ -11,16 +11,20 @@
     margin-top: 0.5em;
 }
 
+.profile-container,
 .post-container {
   margin-bottom: 15px;
   padding: 15px;
   background: white;
   border: 1px solid #ddd;
-  border-radius: 8px;
+  border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: box-shadow 0.3s ease, transform 0.2s ease;
 }
 
+.profile-container { text-align: center; }
+
+.profile-container:hover,
 .post-container:hover {
   border: 1px solid #c5c5c5;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
@@ -86,5 +90,54 @@
 .actions:hover {
   transform: scale(1.05);
 }
+
+
+.profile-container .avatar {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 15px;
+  margin-top: 15px;
+  transition: transform 0.2s ease;
+}
+
+.profile-container .avatar:hover {
+  transform: scale(1.1);
+}
+
+.handle {
+  margin: 10px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+}
+
+.follows {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  font-size: 14px;
+}
+
+.follow-btn {
+  cursor: pointer;
+  font-weight: bold;
+  transition: transform 0.2s ease;
+}
+
+.follow-btn:hover {
+  transform: scale(1.075);
+  color: #007bff;
+}
+
+.followed {
+  color: #007bff;
+}
+
+.followed:hover {
+  color: rgb(236, 75, 75);
+}
+
 
 

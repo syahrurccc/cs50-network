@@ -16,7 +16,7 @@ def index(request):
 
 
 @csrf_exempt
-@login_required
+@login_required(login_url="/login")
 def create_posts(request):
 
     if request.method != "POST":
@@ -51,7 +51,7 @@ def show_posts(request, type):
         "liked_ids": list(liked_ids)
     })
 
-
+@csrf_exempt
 def profile(request, username):
     
     try:
@@ -75,12 +75,22 @@ def profile(request, username):
             "liked_ids": list(liked_ids)
         })
 
+    # If user click follow button
     elif request.method == "PUT":
         data = json.loads(request.body)
-        if profile != request.user and data.get("following") is not None:
-            profile.followers.add(request.user)
-        profile.save()
-        return HttpResponse(status=204)
+
+        if not request.user.is_authenticated:
+            return JsonResponse({"error": "Not authenticated.", "redirect":"/login"}, status=401)
+        elif profile != request.user and data.get("following") is not None:
+            if data.get("following"):
+                profile.followers.add(request.user)
+            else:
+                profile.followers.remove(request.user)
+            profile.save()
+            return HttpResponse(status=204)
+
+        else:
+            return JsonResponse({"error": "Can't follow yourself, Mate."}, status=400)
 
     else:
         return JsonResponse({"error": "GET or PUT request required."}, status=400)
