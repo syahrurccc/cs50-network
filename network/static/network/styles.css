@@ -8,7 +8,7 @@
 }
 
 #post-submit {
-    margin-top: 0.5em;
+  margin-top: 0.5em;
 }
 
 .profile-container,
@@ -48,6 +48,7 @@
 }
 
 .details .author {
+  font-size: 1.1em;
   font-weight: bold;
   margin-right: auto;  
 }
@@ -58,36 +59,40 @@
 }
 
 .post-container p {
-  font-size: 15px;
+  font-size: 1em;
   margin: 10px 0;
 }
 
-.actions, .post-container > div:last-child {
+.actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-top: 8px;
   font-size: 14px;
 }
 
+.post-container .like-btn {
+  font-size: 1em;
+}
+
 .unliked {
   color: black;
-  cursor: pointer;
 }
 
 .liked {
   color: #007bff;
-  cursor: pointer;
+  font-weight: bold;
 }
 
 #following-posts,
 #all-posts,
-.author,
-.actions, .post-container > div:last-child {
+.author {
   cursor: pointer;
   transition: transform 0.2s ease;
 }
 
 #following-posts:hover,
-#all-posts:hover,
-.actions:hover {
+#all-posts:hover {
   transform: scale(1.05);
 }
 
@@ -137,6 +142,29 @@
 
 .followed:hover {
   color: rgb(236, 75, 75);
+}
+
+.like-btn,
+.edit-btn,
+.save-edit-btn {
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.like-btn:hover,
+.edit-btn:hover,
+.save-edit-btn:hover {
+  transform: scale(1.1);
+  color: #007bff;
+}
+
+.edit-box {
+  width: 100%;
+  min-height: 80px;
+  font-size: 1em;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 12px;
 }
 
 
