@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const author = event.target.closest('.author')
         if (author) {
             const username = author.dataset.username;
-            loadProfile(username);
+            loadProfile(username);    
         }
 
         const followBtn = event.target.closest('.follow-btn')
@@ -29,6 +29,20 @@ document.addEventListener('DOMContentLoaded', () => {
             editPost(postContainer, editBtn);
         }
 
+        const pageBtn = event.target.closest('.page-link');
+        if (!pageBtn) return;
+        event.preventDefault();
+
+        const pageNumber = pageBtn.dataset.page;
+        if (document.querySelector('#all-posts-view').style.display === 'block') {
+            viewPosts('all', pageNumber);
+        } else if (document.querySelector('#following-posts-view').style.display === 'block') {
+            viewPosts('following', pageNumber);
+        } else if (document.querySelector('#profile-view').style.display = 'block') {
+            const username = document.querySelector('#profile-view').dataset.username;
+            loadProfile(username, pageNumber);
+        }
+
     });
     document.querySelector('.body').addEventListener('mouseover', (event) => {
         const followBtn = event.target.closest('.follow-btn.followed');
@@ -44,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
     viewPosts('all');
 });
 
-async function viewPosts(type) {
+async function viewPosts(type, pageNumber) {
     
     const currentUser = document.body.dataset.user;
     const isLoggedIn = currentUser !== 'AnonymousUser';
@@ -59,18 +73,17 @@ async function viewPosts(type) {
     document.querySelector('#all-posts-view').style.display = isAllView ? 'block' : 'none';
     
     try {
-        const response = await fetch(`/posts/${type}`);
+        const response = await fetch(`/posts/${type}?page=${pageNumber}`);
 
         if (!response.ok) {
             const error = await response.json();
             throw new Error(error.error);
         }
 
-        const { posts, liked_ids } = await response.json();
+        const { posts, liked_ids, paginator } = await response.json();
         const liked = new Set(liked_ids);
-        console.log(posts)
         const postBody = document.querySelector( isAllView ? '#all-posts-view' : '#following-posts-view');
-        loadPosts(posts, postBody, liked);
+        loadPosts(posts, postBody, liked, paginator);
 
     } catch(error) {
         console.error(error)
@@ -94,7 +107,7 @@ function newPost(event) {
     })
 }
 
-async function loadProfile(username) {
+async function loadProfile(username, pageNumber) {
     
     const currentUser = document.body.dataset.user;
 
@@ -107,15 +120,17 @@ async function loadProfile(username) {
     document.querySelector('#following-posts-view').style.display = 'none';
     document.querySelector('#all-posts-view').style.display = 'none';
 
+    document.querySelector('#profile-view').dataset.username = username;
+
     try {
-        const response = await fetch(`/users/${username}`);
+        const response = await fetch(`/users/${username}?page=${pageNumber}`);
 
         if (!response.ok) {
             const error = await response.json();
             throw new Error(error.error);
         }
 
-        const { profile, posts, isFollowing, liked_ids } = await response.json()
+        const { profile, posts, isFollowing, liked_ids, paginator } = await response.json()
         const liked = new Set(liked_ids);
 
         const profilePage = document.createElement('div');
@@ -159,14 +174,14 @@ async function loadProfile(username) {
         document.querySelector('#profile-view').append(profileContainer);
 
         const postBody = document.querySelector('#profile-view');
-        loadPosts(posts, postBody, liked);
+        loadPosts(posts, postBody, liked, paginator);
 
     } catch(error) {
         console.log(error);
     }
 }
 
-function loadPosts(posts, postBody, liked) {
+function loadPosts(posts, postBody, liked, paginator) {
 
     const currentUser = document.body.dataset.user;
         
@@ -217,8 +232,56 @@ function loadPosts(posts, postBody, liked) {
 
         postContainer.append(details, content, actions);
         postBody.append(postContainer);
-        
     });
+
+    const pageNav = document.createElement('nav');
+    pageNav.setAttribute('aria-label', 'Page navigation');
+
+    const pagination = document.createElement('ul');
+    pagination.classList.add('pagination', 'justify-content-center');
+
+    if (paginator.hasPrevious) {
+        const previousList = document.createElement('li');
+        previousList.className = 'page-item';
+        const previousAnchor = document.createElement('a');
+        previousAnchor.className = 'page-link';
+        previousAnchor.href = '#';
+        previousAnchor.dataset.page = paginator.prevPage;
+        previousAnchor.textContent = 'Previous';
+        previousList.append(previousAnchor);
+        pagination.append(previousList);
+    }
+
+    for (let i = 1; i <= paginator.totalPage; i++) {
+        const numberList = document.createElement('li');
+        numberList.className = 'page-item';
+        const numberAnchor = document.createElement('a');
+        numberAnchor.className = 'page-link';
+        if (i === paginator.pageNumber) {
+            numberList.classList.add('active');
+            numberAnchor.setAttribute('aria-current', 'page');
+        }
+        numberAnchor.dataset.page = i;
+        numberAnchor.href = '#';
+        numberAnchor.textContent = i;
+        numberList.append(numberAnchor);
+        pagination.append(numberList);
+    }
+
+    if (paginator.hasNext) {
+        const nextList = document.createElement('li');
+        nextList.className = 'page-item';
+        const nextAnchor = document.createElement('a');
+        nextAnchor.className = 'page-link';
+        nextAnchor.href = '#';
+        nextAnchor.dataset.page = paginator.nextPage;
+        nextAnchor.textContent = 'Next';
+        nextList.append(nextAnchor);
+        pagination.append(nextList);
+    }
+
+    pageNav.append(pagination);
+    postBody.append(pageNav);
 }
 
 async function follows(followBtn) {

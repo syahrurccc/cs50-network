@@ -1,6 +1,7 @@
 import json
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db import IntegrityError
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
@@ -36,21 +37,36 @@ def create_posts(request):
 def load_posts(request, type):
 
     if type == "all":
-        posts = Post.objects.order_by("-timestamp").all()
+        posts_query = Post.objects.order_by("-timestamp").all()
     elif type == "following":
         if not request.user.is_authenticated:
             return JsonResponse({"error": "Not logged in."}, status=401)
-        posts = Post.objects.filter(author__followers=request.user).order_by("-timestamp")
+        posts_query = Post.objects.filter(author__followers=request.user).order_by("-timestamp")
     
     else:
         return JsonResponse({"error": "Invalid route"}, status=400)
     
+    # Get the page number from URL, see the JS file
+    page_number = request.GET.get("page", 1)
     liked_ids = set(request.user.likes.values_list("id", flat=True)) if request.user.is_authenticated else set()
 
+    # Read django pagination for more explanation
+    paginator = Paginator(posts_query, 10)
+    page_obj = paginator.get_page(page_number)
+
     return JsonResponse({
-        "posts": [post.serialize() for post in posts], 
-        "liked_ids": list(liked_ids)
+        "posts": [post.serialize() for post in page_obj], 
+        "liked_ids": list(liked_ids),
+        "paginator": {
+            "pageNumber": page_obj.number,
+            "totalPage": page_obj.paginator.num_pages,
+            "hasNext": page_obj.has_next(),
+            "hasPrevious": page_obj.has_previous(),
+            "nextPage": page_obj.next_page_number() if page_obj.has_next() else None,
+            "prevPage": page_obj.previous_page_number() if page_obj.has_previous() else None
+        }
     })
+
 
 @csrf_exempt
 def edit_post(request, post_id):
@@ -72,6 +88,7 @@ def edit_post(request, post_id):
 
     return JsonResponse({"error": "Content can't be empty."}, status=400)
 
+
 @csrf_exempt
 def like_post(request, post_id):
 
@@ -91,7 +108,6 @@ def like_post(request, post_id):
         return JsonResponse({"message": "Post unliked."}, status=200)
 
     
-
 @csrf_exempt
 def profile(request, username):
     
@@ -100,8 +116,12 @@ def profile(request, username):
     except User.DoesNotExist:
         return JsonResponse({"error": "User does not exist"}, status=404)
     
-    posts = Post.objects.filter(author=profile).order_by("-timestamp")
+    page_number = request.GET.get("page", 1)
+    posts_query = Post.objects.filter(author=profile).order_by("-timestamp")
     liked_ids = set(request.user.likes.values_list("id", flat=True)) if request.user.is_authenticated else set()
+
+    paginator = Paginator(posts_query, 10)
+    page_obj = paginator.get_page(page_number)
 
     # Check if the current user is following the viewed user
     is_following = False
@@ -111,9 +131,17 @@ def profile(request, username):
     if request.method == "GET":
         return JsonResponse({
             "profile": profile.serialize(),
-            "posts": [post.serialize() for post in posts],
+            "posts": [post.serialize() for post in page_obj],
             "isFollowing": is_following,
-            "liked_ids": list(liked_ids)
+            "liked_ids": list(liked_ids),
+            "paginator": {
+                "pageNumber": page_obj.number,
+                "totalPage": page_obj.paginator.num_pages,
+                "hasNext": page_obj.has_next(),
+                "hasPrevious": page_obj.has_previous(),
+                "nextPage": page_obj.next_page_number() if page_obj.has_next() else None,
+                "prevPage": page_obj.previous_page_number() if page_obj.has_previous() else None
+            }
         })
 
     # If user click follow button
