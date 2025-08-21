@@ -3,8 +3,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelector('#all-posts').addEventListener('click', () => viewPosts('all'));
     if (document.body.dataset.user !== 'AnonymousUser') {
         document.querySelector('#following-posts').addEventListener('click', () => viewPosts('following'));
+        document.querySelector('#current-user').onclick = () => {
+        loadProfile(document.body.dataset.user)
+        };
     }
     document.querySelector('#post-form').addEventListener('submit', newPost);
+    
     document.querySelector('.body').addEventListener('click', (event) => {
         const author = event.target.closest('.author')
         if (author) {
@@ -58,6 +62,38 @@ document.addEventListener('DOMContentLoaded', () => {
     viewPosts('all');
 });
 
+
+async function newPost(event) {
+    
+    event.preventDefault();
+
+    const content = document.querySelector('#new-post').value;
+
+    try {
+        const response = await fetch('/posts/create', {
+            method: 'POST',
+            body: JSON.stringify({content})
+        });
+
+        const result = await response.json()
+
+        if (!response.ok) {
+            if (result.redirect) {
+                window.location.href = result.redirect;
+            }
+            throw new Error(result.error);
+        }
+
+        viewPosts('all');
+        showAlert(result.message, 'success');
+
+    } catch(error) {
+        console.log(error);
+        showAlert(error.message, 'error');
+    }
+}
+
+
 async function viewPosts(type, pageNumber) {
     
     const currentUser = document.body.dataset.user;
@@ -67,6 +103,14 @@ async function viewPosts(type, pageNumber) {
     document.querySelector(isAllView ? '#all-posts-view' : '#following-posts-view').innerHTML = '';
     document.querySelector('#new-post').value = '';
 
+    if (isLoggedIn) {
+        document.querySelector('#all-posts').classList.remove('active');
+        document.querySelector('#following-posts').classList.remove('active');
+        document.querySelector(isAllView ? '#all-posts' : '#following-posts').classList.add('active');
+    } else {
+        document.querySelector('#all-posts').classList.add('active');
+    }
+   
     document.querySelector('#profile-view').style.display = 'none';
     document.querySelector('#create-post').style.display = isLoggedIn ? 'block' : 'none';
     document.querySelector('#following-posts-view').style.display = isAllView ? 'none' : 'block';
@@ -76,8 +120,11 @@ async function viewPosts(type, pageNumber) {
         const response = await fetch(`/posts/${type}?page=${pageNumber}`);
 
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error);
+            const result = await response.json();
+            if (result.redirect) {
+                window.location.href = result.redirect;
+            }
+            throw new Error(result.error);
         }
 
         const { posts, liked_ids, paginator } = await response.json();
@@ -86,100 +133,11 @@ async function viewPosts(type, pageNumber) {
         loadPosts(posts, postBody, liked, paginator);
 
     } catch(error) {
-        console.error(error)
+        console.error(error);
+        showAlert(error, 'error');
     }
 }
 
-function newPost(event) {
-    
-    event.preventDefault();
-
-    const content = document.querySelector('#new-post').value;
-
-    fetch('/posts/create', {
-        method: 'POST',
-        body: JSON.stringify({content})
-    })
-    .then(response => response.json())
-    .then(result => {
-        console.log(result)
-        viewPosts('all')
-    })
-}
-
-async function loadProfile(username, pageNumber) {
-    
-    const currentUser = document.body.dataset.user;
-
-    document.querySelector('#all-posts-view').innerHTML = '';
-    document.querySelector('#following-posts-view').innerHTML = '';
-    document.querySelector('#profile-view').innerHTML = '';
-
-    document.querySelector('#profile-view').style.display = 'block';
-    document.querySelector('#create-post').style.display = 'none';
-    document.querySelector('#following-posts-view').style.display = 'none';
-    document.querySelector('#all-posts-view').style.display = 'none';
-
-    document.querySelector('#profile-view').dataset.username = username;
-
-    try {
-        const response = await fetch(`/users/${username}?page=${pageNumber}`);
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error);
-        }
-
-        const { profile, posts, isFollowing, liked_ids, paginator } = await response.json()
-        const liked = new Set(liked_ids);
-
-        const profilePage = document.createElement('div');
-        profilePage.className = 'profile-page';
-
-        const profileContainer = document.createElement('div');
-        profileContainer.className = 'profile-container';
-
-        const avatar = document.createElement('img');
-        avatar.className = 'avatar';
-        avatar.src = profile.profile_pic;
-
-        const handle = document.createElement('h2');
-        handle.className = 'handle'
-        handle.textContent = `@${username}`;
-
-        const followsDiv = document.createElement('div');
-        followsDiv.className = 'follows';
-
-        const following = document.createElement('span');
-        following.className = 'following';
-        following.dataset.count = profile.followings_count;
-        following.textContent = `${profile.followings_count} Following`
-
-        const followers = document.createElement('span');
-        followers.className = 'followers';
-        followers.dataset.count = profile.followers_count;
-        followers.textContent = `${profile.followers_count} Followers`
-        
-        followsDiv.append(following, followers);
-        
-        if (currentUser !== profile.username) {
-            const followBtn = document.createElement('span');
-            followBtn.classList.add('follow-btn', isFollowing ? 'followed' : 'unfollowed');
-            followBtn.dataset.username = username;
-            followBtn.textContent = isFollowing ? 'Followed' : 'Follow';
-            followsDiv.append(followBtn);
-        }
-
-        profileContainer.append(avatar, handle, followsDiv);
-        document.querySelector('#profile-view').append(profileContainer);
-
-        const postBody = document.querySelector('#profile-view');
-        loadPosts(posts, postBody, liked, paginator);
-
-    } catch(error) {
-        console.log(error);
-    }
-}
 
 function loadPosts(posts, postBody, liked, paginator) {
 
@@ -284,51 +242,58 @@ function loadPosts(posts, postBody, liked, paginator) {
     postBody.append(pageNav);
 }
 
-async function follows(followBtn) {
 
-    const wasFollowing = followBtn.classList.contains('followed');
-    const username = followBtn.dataset.username;
-    const followersEl = document.querySelector('.followers');
+function editPost(postContainer, editBtn) {
 
-    let currentCount = parseInt(followersEl.dataset.count);
-    const newCount = wasFollowing ? currentCount - 1 : currentCount + 1;
-    followersEl.dataset.count = newCount;
-    followersEl.textContent = `${newCount} Followers`;
-    
-    followBtn.classList.toggle('followed', !wasFollowing);
-	followBtn.classList.toggle('unfollowed', wasFollowing);
-	
-    let label;
-    // If the user was following now they're not, so display 'follow'
-    if (wasFollowing) {
-        label = 'Follow'
-    } else {
-        // If they're following and still hovering on the button, display unfollow, else follow
-        label = followBtn.matches(':hover') ? 'Unfollow' : 'Follow';
-    }
+    const contentEl = postContainer.querySelector('p');
+    const oldText = contentEl.textContent;
 
-    followBtn.textContent = label;
+    const textarea = document.createElement('textarea');
+    textarea.className = 'edit-box';
+    textarea.value = oldText;
 
-    try {
-        const response = await fetch(`/users/follow/${username}`, {
-            method: 'PUT',
-            body: JSON.stringify({"following": !wasFollowing})
-        });
+    const saveEditBtn = document.createElement('span');
+    saveEditBtn.textContent = 'Save Edit';
+    saveEditBtn.className = 'save-edit-btn';
 
-        const result = await response.json();
+    contentEl.replaceWith(textarea);
+    editBtn.replaceWith(saveEditBtn);
 
-        if (!response.ok) {
-            if (result.redirect) {
-                window.location.href = result.redirect;
+    saveEditBtn.onclick = async () => {
+        const newText = textarea.value;
+
+        try {
+
+            const response = await fetch(`/posts/edit/${postContainer.id}`, {
+                method: 'PUT',
+                body: JSON.stringify({"content": newText})
+            });
+
+            const result = await response.json();
+            
+            if (!response.ok) {
+                if (result.redirect) {
+                    window.location.href = result.redirect;
+                }
+                throw new Error(result.error);
             }
-            throw new Error(result.error);
-        }
+            
+            showAlert(result.message, 'success');
 
-    } catch(error) {
-        console.error(error);
-    }
-        
+            const newP = document.createElement('p');
+            newP.textContent = newText;
+
+            saveEditBtn.replaceWith(editBtn);
+            textarea.replaceWith(newP);
+            editBtn.onclick = () => editPost(postContainer, editBtn);
+
+        } catch(error) {
+            console.log(error);
+            showAlert(error.message, 'error');
+        }
+    };
 }
+
 
 async function processLike(likeBtn) {
 
@@ -358,41 +323,147 @@ async function processLike(likeBtn) {
         }
 
     } catch(error) {
-
+        console.log(error);
+        showAlert(error.message, 'error');
     }
 }
 
-function editPost(postContainer, editBtn) {
 
-    const contentEl = postContainer.querySelector('p');
-    const oldText = contentEl.textContent;
+async function loadProfile(username, pageNumber) {
+    
+    const currentUser = document.body.dataset.user;
 
-    const textarea = document.createElement('textarea');
-    textarea.className = 'edit-box';
-    textarea.value = oldText;
+    document.querySelector('#all-posts-view').innerHTML = '';
+    document.querySelector('#following-posts-view').innerHTML = '';
+    document.querySelector('#profile-view').innerHTML = '';
 
-    const saveEditBtn = document.createElement('span');
-    saveEditBtn.textContent = 'Save Edit';
-    saveEditBtn.className = 'save-edit-btn';
+    document.querySelector('#profile-view').style.display = 'block';
+    document.querySelector('#create-post').style.display = 'none';
+    document.querySelector('#following-posts-view').style.display = 'none';
+    document.querySelector('#all-posts-view').style.display = 'none';
 
-    contentEl.replaceWith(textarea);
-    editBtn.replaceWith(saveEditBtn);
+    document.querySelector('#profile-view').dataset.username = username;
 
-    saveEditBtn.onclick = async () => {
-        const newText = textarea.value;
+    try {
+        const response = await fetch(`/users/${username}?page=${pageNumber}`);
 
-        const response = await fetch(`/posts/edit/${postContainer.id}`, {
-            method: 'PUT',
-            body: JSON.stringify({"content": newText})
-        });
-        const result = await response.json();
-        console.log(result);
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error);
+        }
+
+        const { profile, posts, isFollowing, liked_ids, paginator } = await response.json()
+        const liked = new Set(liked_ids);
+
+        const profilePage = document.createElement('div');
+        profilePage.className = 'profile-page';
+
+        const profileContainer = document.createElement('div');
+        profileContainer.className = 'profile-container';
+
+        const avatar = document.createElement('img');
+        avatar.className = 'avatar';
+        avatar.src = profile.profile_pic;
+
+        const handle = document.createElement('h2');
+        handle.className = 'handle'
+        handle.textContent = `@${username}`;
+
+        const followsDiv = document.createElement('div');
+        followsDiv.className = 'follows';
+
+        const following = document.createElement('span');
+        following.className = 'following';
+        following.dataset.count = profile.followings_count;
+        following.textContent = `${profile.followings_count} Following`
+
+        const followers = document.createElement('span');
+        followers.className = 'followers';
+        followers.dataset.count = profile.followers_count;
+        followers.textContent = `${profile.followers_count} Followers`
         
-        const newP = document.createElement('p');
-        newP.textContent = newText;
+        followsDiv.append(following, followers);
+        
+        if (currentUser !== profile.username) {
+            const followBtn = document.createElement('span');
+            followBtn.classList.add('follow-btn', isFollowing ? 'followed' : 'unfollowed');
+            followBtn.dataset.username = username;
+            followBtn.textContent = isFollowing ? 'Followed' : 'Follow';
+            followsDiv.append(followBtn);
+        }
 
-        saveEditBtn.replaceWith(editBtn);
-        textarea.replaceWith(newP);
-        editBtn.onclick = () => editPost(postContainer, editBtn);
-    };
+        profileContainer.append(avatar, handle, followsDiv);
+        document.querySelector('#profile-view').append(profileContainer);
+
+        const postBody = document.querySelector('#profile-view');
+        loadPosts(posts, postBody, liked, paginator);
+
+    } catch(error) {
+        console.log(error);
+        showAlert(error.message, 'error');
+    }
 }
+
+
+async function follows(followBtn) {
+
+    const wasFollowing = followBtn.classList.contains('followed');
+    const username = followBtn.dataset.username;
+    const followersEl = document.querySelector('.followers');
+
+    let currentCount = parseInt(followersEl.dataset.count);
+    const newCount = wasFollowing ? currentCount - 1 : currentCount + 1;
+    followersEl.dataset.count = newCount;
+    followersEl.textContent = `${newCount} Followers`;
+    
+    followBtn.classList.toggle('followed', !wasFollowing);
+	followBtn.classList.toggle('unfollowed', wasFollowing);
+	
+    // If the user was following now they're not, so display 'follow'
+    // If they're following and still hovering on the button, display unfollow, else follow
+    const label = wasFollowing ? 'Follow' : followBtn.matches(':hover') ? 'Unfollow' : 'Follow';
+    
+    followBtn.textContent = label;
+
+    try {
+        const response = await fetch(`/users/follow/${username}`, {
+            method: 'PUT',
+            body: JSON.stringify({"following": !wasFollowing})
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            if (result.redirect) {
+                window.location.href = result.redirect;
+            }
+            throw new Error(result.error);
+        }
+
+    } catch(error) {
+        console.error(error);
+        showAlert(error.message, 'error');
+    }
+        
+}
+
+
+function showAlert(message, type) {
+
+	const alert = document.createElement('div');
+    const isError = type === 'error';
+
+    alert.classList.add('alert', isError ? 'alert-danger' : 'alert-primary');
+	alert.setAttribute('role', 'alert');
+
+	alert.textContent = message
+
+	document.querySelector('body').prepend(alert);
+	alert.style.animationPlayState = 'running';
+
+	setTimeout(() => alert.remove(), 3000);
+}
+
+
+
+

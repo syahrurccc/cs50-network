@@ -1,6 +1,5 @@
 import json
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import IntegrityError
 from django.http import HttpResponseRedirect, JsonResponse
@@ -17,13 +16,12 @@ def index(request):
 
 
 @csrf_exempt
-@login_required(login_url="/login")
 def create_posts(request):
 
     if request.method != "POST":
         return JsonResponse({"error": "POST request required."}, status=400)
     elif not request.user.is_authenticated:
-        return JsonResponse({"error": "Not logged in."}, status=401)
+        return JsonResponse({"error": "Not authenticated.", "redirect":"/login"}, status=401)
     
     data = json.loads(request.body)
 
@@ -40,7 +38,7 @@ def load_posts(request, type):
         posts_query = Post.objects.order_by("-timestamp").all()
     elif type == "following":
         if not request.user.is_authenticated:
-            return JsonResponse({"error": "Not logged in."}, status=401)
+            return JsonResponse({"error": "Not authenticated.", "redirect":"/login"}, status=401)
         posts_query = Post.objects.filter(author__followers=request.user).order_by("-timestamp")
     
     else:
