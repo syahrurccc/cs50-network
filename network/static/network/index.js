@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelector('#all-posts').addEventListener('click', () => viewPosts('all'));
+    // Wrapped under if to not cause conflicts when user is not logged in
     if (document.body.dataset.user !== 'AnonymousUser') {
         document.querySelector('#following-posts').addEventListener('click', () => viewPosts('following'));
         document.querySelector('#current-user').onclick = () => {
@@ -8,7 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
     document.querySelector('#post-form').addEventListener('submit', newPost);
-    
     document.querySelector('.body').addEventListener('click', (event) => {
         const author = event.target.closest('.author')
         if (author) {
@@ -34,20 +34,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const pageBtn = event.target.closest('.page-link');
-        if (!pageBtn) return;
-        event.preventDefault();
-
-        const pageNumber = pageBtn.dataset.page;
-        if (document.querySelector('#all-posts-view').style.display === 'block') {
-            viewPosts('all', pageNumber);
-        } else if (document.querySelector('#following-posts-view').style.display === 'block') {
-            viewPosts('following', pageNumber);
-        } else if (document.querySelector('#profile-view').style.display = 'block') {
-            const username = document.querySelector('#profile-view').dataset.username;
-            loadProfile(username, pageNumber);
+        if (pageBtn) {
+            event.preventDefault();
+            const pageNumber = pageBtn.dataset.page;
+            if (document.querySelector('#all-posts-view').style.display === 'block') {
+                viewPosts('all', pageNumber);
+            } else if (document.querySelector('#following-posts-view').style.display === 'block') {
+                viewPosts('following', pageNumber);
+            } else if (document.querySelector('#profile-view').style.display = 'block') {
+                const username = document.querySelector('#profile-view').dataset.username;
+                loadProfile(username, pageNumber);
+            }
         }
-
     });
+    // These functions make the followed text change on hover
     document.querySelector('.body').addEventListener('mouseover', (event) => {
         const followBtn = event.target.closest('.follow-btn.followed');
         if (!followBtn) return;
@@ -59,6 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
         followBtn.textContent = 'Followed';
     });
 
+    // On default load all posts
     viewPosts('all');
 });
 
@@ -103,6 +104,7 @@ async function viewPosts(type, pageNumber) {
     document.querySelector(isAllView ? '#all-posts-view' : '#following-posts-view').innerHTML = '';
     document.querySelector('#new-post').value = '';
 
+    // Toggling the page navigation behavior
     if (isLoggedIn) {
         document.querySelector('#all-posts').classList.remove('active');
         document.querySelector('#following-posts').classList.remove('active');
@@ -180,6 +182,7 @@ function loadPosts(posts, postBody, liked, paginator) {
         like.textContent = `${post.likes} Likes`;
         actions.append(like);
 
+        // Only show the edit button on your own posts
         if (currentUser === post.author_username) {
             const editBtn = document.createElement('span');
             editBtn.className = 'edit-btn';
@@ -192,6 +195,7 @@ function loadPosts(posts, postBody, liked, paginator) {
         postBody.append(postContainer);
     });
 
+    // Contruct the pagination elements
     const pageNav = document.createElement('nav');
     pageNav.setAttribute('aria-label', 'Page navigation');
 
@@ -245,17 +249,21 @@ function loadPosts(posts, postBody, liked, paginator) {
 
 function editPost(postContainer, editBtn) {
 
+    // Get the current post element and text
     const contentEl = postContainer.querySelector('p');
     const oldText = contentEl.textContent;
 
+    // Make a new text area, fill it with the old text
     const textarea = document.createElement('textarea');
     textarea.className = 'edit-box';
     textarea.value = oldText;
 
+    // Make a save edit button
     const saveEditBtn = document.createElement('span');
     saveEditBtn.textContent = 'Save Edit';
     saveEditBtn.className = 'save-edit-btn';
 
+    // Replace both the text and edit button
     contentEl.replaceWith(textarea);
     editBtn.replaceWith(saveEditBtn);
 
@@ -280,9 +288,11 @@ function editPost(postContainer, editBtn) {
             
             showAlert(result.message, 'success');
 
+            // Create a new p filled with new text
             const newP = document.createElement('p');
             newP.textContent = newText;
 
+            // Swap the textarea and edit button
             saveEditBtn.replaceWith(editBtn);
             textarea.replaceWith(newP);
             editBtn.onclick = () => editPost(postContainer, editBtn);
@@ -384,6 +394,7 @@ async function loadProfile(username, pageNumber) {
         
         followsDiv.append(following, followers);
         
+        // Only show follow button if viewing other user's profile
         if (currentUser !== profile.username) {
             const followBtn = document.createElement('span');
             followBtn.classList.add('follow-btn', isFollowing ? 'followed' : 'unfollowed');
@@ -400,6 +411,7 @@ async function loadProfile(username, pageNumber) {
 
     } catch(error) {
         console.log(error);
+        viewPosts('all');
         showAlert(error.message, 'error');
     }
 }
